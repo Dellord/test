@@ -1,0 +1,67 @@
+1)
+
+CREATE TABLE `users`  (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(64) NULL DEFAULT NULL,
+  `gender` tinyint(1) NOT NULL,
+  `birth_date` int(11) NOT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `gender_age`(`gender`, `birth_date`) USING BTREE
+);
+
+CREATE TABLE `phone_numbers`  (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `phone` varchar(32) NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `user_id`(`user_id`) USING BTREE
+);
+
+select users.name, count(phone_numbers.user_id) as phones from users left join phone_numbers on (users.id = phone_numbers.user_id) where users.gender = 2 and users.birth_date BETWEEN UNIX_TIMESTAMP() - 693792000 and UNIX_TIMESTAMP() - 567648000 group by phone_numbers.user_id;
+
+2)
+
+/**
+ * get users from a string with ids like 1,2,3,4
+ * return array with keys by user id
+ * 
+ * @param string $user_ids
+ * @return array
+ * @throws \Exception
+ */
+function load_users_data( $user_ids ) {
+    
+    if( !is_string($user_ids) || !preg_match('#^[0-9,]+$#', $user_ids) ) {
+        throw new \Exception('wrong ids string');
+    }
+    
+    $user_ids = preg_split("/[,]+/", $user_ids, -1, PREG_SPLIT_NO_EMPTY);
+    if( !sizeof($user_ids) ) {
+        throw new \Exception('no ids provided');
+    }
+    
+    $user_ids_str = implode(',', $user_ids);
+	
+    $db = mysqli_connect("localhost", "root", "123123", "database");
+    $result = mysqli_query($db, "SELECT * FROM users WHERE id IN ({$user_ids_str})");
+    mysqli_close($db);
+    
+    $data = [];
+    while( $obj = $result->fetch_object() ) {
+        $data[$obj->id] = $obj->name;
+    }
+    return $data;
+}
+
+$data = load_users_data($_GET['user_ids'] ?? null);
+foreach( $data as $user_id => $name ) {
+	echo "<a href=\"/show_user.php?id=$user_id\">$name</a>";
+}
+
+/*
+* нет проверки что ключ user_ids существует
+* можно подставить sql, например ?user_ids=1 | sleep(10)
+* так можно подставить код для ссылки
+* видно данные для подключения при ошибке
+* при отсутствии результата, будет ошибка по переменной $data
+*/
